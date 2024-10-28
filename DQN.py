@@ -1,3 +1,5 @@
+import math
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -170,9 +172,9 @@ if __name__ == "__main__":
             step_every_episode = 0
             epsilon = episode / max_episode  # 动态变化随机值
             while True:
-                if episode < 10:
-                    time.sleep(0.1)
-                if episode > 480:
+                # if episode < 10:
+                #     time.sleep(0.1)
+                if episode > max_episode-10:
                     time.sleep(0.5)
                 env.render()  # 显示新位置
                 action = model.choose_action(state, 1-epsilon)  # 根据状态选择行为
@@ -184,7 +186,7 @@ if __name__ == "__main__":
                     model.learn()
                 # 进入下一步
                 state = next_state
-                if terminal:
+                if terminal or step_every_episode > 99:
                     print("episode=", episode, end=",")
                     print("step=", step_every_episode)
                     break
