@@ -27,12 +27,6 @@ class Net(nn.Module):
             self.layers.append(nn.Linear(hide_layers[-1], n_actions))
         for i in range(len(self.layers)):
             self.layers[i].weight.data.normal_(0, 0.1)
-        # self.fc1 = nn.Linear(n_states, 15)
-        # self.fc3 = nn.Linear(15, 8)
-        # self.fc2 = nn.Linear(8, n_actions)
-        # self.fc1.weight.data.normal_(0, 0.1)
-        # self.fc3.weight.data.normal_(0, 0.1)
-        # self.fc2.weight.data.normal_(0, 0.1)
         if id == None or self.location == 114514:
             pass
         else:
@@ -43,11 +37,6 @@ class Net(nn.Module):
             x = layer(x)
             x = F.relu(x)
         out = self.layers[-1](x)
-        # x = self.fc1(x)
-        # x = F.relu(x)
-        # x = self.fc3(x)
-        # x = F.relu(x)
-        # out = self.fc2(x)
         return out
 
 
@@ -138,18 +127,6 @@ class DQN:
                                     global_step=self.global_step)
                 self.writer.add_histogram(f'fc{i:d}/biases', self.eval_net.layers[i].bias,
                                     global_step=self.global_step)
-            # self.writer.add_histogram(f'fc{i:d}/weights', self.eval_net.fc1.weight,
-            #                         global_step=self.global_step)
-            # self.writer.add_histogram('fc1/biases', self.eval_net.fc1.bias,
-            #                         global_step=self.global_step)
-            # self.writer.add_histogram('fc3/weights', self.eval_net.fc3.weight,
-            #                         global_step=self.global_step)
-            # self.writer.add_histogram('fc3/biases', self.eval_net.fc3.bias,
-            #                         global_step=self.global_step)
-            # self.writer.add_histogram('fc2/weights', self.eval_net.fc2.weight,
-            #                         global_step=self.global_step)
-            # self.writer.add_histogram('fc2/biases', self.eval_net.fc2.bias,
-            #                         global_step=self.global_step)
             self.global_step += 1
 
     def plot_cost(self):

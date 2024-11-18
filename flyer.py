@@ -2,6 +2,7 @@ import random
 import math
 import numpy as np
 # import os
+
 def calculate_distance(a=tuple, b=tuple):
     if len(a) != len(b):
         raise ValueError("The length of A and B must be the same")
