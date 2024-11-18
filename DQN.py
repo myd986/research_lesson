@@ -1,5 +1,5 @@
 import math
-
+import time
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -10,36 +10,49 @@ import shutil
 from torch.utils.tensorboard.writer import SummaryWriter
 from Maze import Maze
 
-
 class Net(nn.Module):
-    def __init__(self, n_states, n_actions, id=None, location=None):
+    def __init__(self, n_states, n_actions, hide_layers=[15,8], id=None, location=None):
         super(Net, self).__init__()
         if location == None:
             self.location = time.strftime("%Y-%m-%d-%H-%M-%S", time.localtime())
         else:
             self.location = location
-        self.fc1 = nn.Linear(n_states, 10)
-        self.fc3 = nn.Linear(10, 10)
-        self.fc2 = nn.Linear(10, n_actions)
-        self.fc1.weight.data.normal_(0, 0.1)
-        self.fc3.weight.data.normal_(0, 0.1)
-        self.fc2.weight.data.normal_(0, 0.1)
+        self.layers = nn.ModuleList()
+        if hide_layers == []:
+            self.layers.append(nn.Linear(n_states, n_actions))
+        else:
+            self.layers.append(nn.Linear(n_states, hide_layers[0]))
+            for i in range(len(hide_layers) - 1):
+                self.layers.append(nn.Linear(hide_layers[i], hide_layers[i + 1]))
+            self.layers.append(nn.Linear(hide_layers[-1], n_actions))
+        for i in range(len(self.layers)):
+            self.layers[i].weight.data.normal_(0, 0.1)
+        # self.fc1 = nn.Linear(n_states, 15)
+        # self.fc3 = nn.Linear(15, 8)
+        # self.fc2 = nn.Linear(8, n_actions)
+        # self.fc1.weight.data.normal_(0, 0.1)
+        # self.fc3.weight.data.normal_(0, 0.1)
+        # self.fc2.weight.data.normal_(0, 0.1)
         if id == None or self.location == 114514:
             pass
         else:
             with SummaryWriter(log_dir='logs/{}/{}'.format(self.location, id)) as w:
                 w.add_graph(self, torch.zeros(1, n_states))
     def forward(self, x):
-        x = self.fc1(x)
-        x = F.relu(x)
-        x = self.fc3(x)
-        x = F.relu(x)
-        out = self.fc2(x)
+        for layer in self.layers[:-1]:
+            x = layer(x)
+            x = F.relu(x)
+        out = self.layers[-1](x)
+        # x = self.fc1(x)
+        # x = F.relu(x)
+        # x = self.fc3(x)
+        # x = F.relu(x)
+        # out = self.fc2(x)
         return out
 
 
 class DQN:
-    def __init__(self, n_states, n_actions, capacity=800, batch_size=128, location=None):
+    def __init__(self, n_states, n_actions, hide_layers=[15,8], capacity=800, batch_size=128, location=None):
         print("<DQN init>")
         # DQN有两个net:target net和eval net,具有选动作，存经历，学习三个基本功能
         if location == None:
@@ -53,7 +66,7 @@ class DQN:
         )
         if os.path.exists('./logs/{}'.format(self.location)):
             shutil.rmtree('./logs/{}'.format(self.location))
-        self.eval_net, self.target_net = Net(n_states, n_actions, location=self.location, id='eval').to(self.device), Net(n_states, n_actions, location=self.location, id='target').to(self.device)
+        self.eval_net, self.target_net = Net(n_states, n_actions, hide_layers=hide_layers, location=self.location, id='eval').to(self.device), Net(n_states, n_actions, hide_layers=hide_layers, location=self.location, id='target').to(self.device)
         self.loss = nn.MSELoss()
         self.optimizer = torch.optim.Adam(self.eval_net.parameters(), lr=0.001)
         self.n_actions = n_actions
@@ -91,7 +104,7 @@ class DQN:
         # print("<learn>")
         # target net 更新频率,用于预测，不会及时更新参数
         if self.learn_step_counter % 100 == 0:
-            self.target_net.load_state_dict(self.eval_net.state_dict())
+            self.target_net.load_state_dict((self.eval_net.state_dict()))
         self.learn_step_counter += 1
 
         # 使用记忆库中批量数据
@@ -120,19 +133,23 @@ class DQN:
             self.writer.add_scalar('loss', loss, global_step=self.global_step)
             self.writer.add_scalar('reward', reward.mean(), global_step=self.global_step)
             self.writer.add_histogram('eval_net', self.eval_net(state), global_step=self.global_step)
-
-            self.writer.add_histogram('fc1/weights', self.eval_net.fc1.weight,
+            for i in range(len(self.eval_net.layers)):
+                self.writer.add_histogram(f'fc{i:d}/weights', self.eval_net.layers[i].weight,
                                     global_step=self.global_step)
-            self.writer.add_histogram('fc1/biases', self.eval_net.fc1.bias,
+                self.writer.add_histogram(f'fc{i:d}/biases', self.eval_net.layers[i].bias,
                                     global_step=self.global_step)
-            self.writer.add_histogram('fc3/weights', self.eval_net.fc3.weight,
-                                    global_step=self.global_step)
-            self.writer.add_histogram('fc3/biases', self.eval_net.fc3.bias,
-                                    global_step=self.global_step)
-            self.writer.add_histogram('fc2/weights', self.eval_net.fc2.weight,
-                                    global_step=self.global_step)
-            self.writer.add_histogram('fc2/biases', self.eval_net.fc2.bias,
-                                    global_step=self.global_step)
+            # self.writer.add_histogram(f'fc{i:d}/weights', self.eval_net.fc1.weight,
+            #                         global_step=self.global_step)
+            # self.writer.add_histogram('fc1/biases', self.eval_net.fc1.bias,
+            #                         global_step=self.global_step)
+            # self.writer.add_histogram('fc3/weights', self.eval_net.fc3.weight,
+            #                         global_step=self.global_step)
+            # self.writer.add_histogram('fc3/biases', self.eval_net.fc3.bias,
+            #                         global_step=self.global_step)
+            # self.writer.add_histogram('fc2/weights', self.eval_net.fc2.weight,
+            #                         global_step=self.global_step)
+            # self.writer.add_histogram('fc2/biases', self.eval_net.fc2.bias,
+            #                         global_step=self.global_step)
             self.global_step += 1
 
     def plot_cost(self):
@@ -172,14 +189,15 @@ if __name__ == "__main__":
             step_every_episode = 0
             epsilon = episode / max_episode  # 动态变化随机值
             while True:
-                # if episode < 10:
-                #     time.sleep(0.1)
+                if episode < 20:
+                    time.sleep(0.1)
                 if episode > max_episode-10:
                     time.sleep(0.5)
                 env.render()  # 显示新位置
                 action = model.choose_action(state, 1-epsilon)  # 根据状态选择行为
                 # 环境根据行为给出下一个状态，奖励，是否结束。
                 next_state, reward, terminal = env.step(action)
+                # reward -= 1/400*step_every_episode**2
                 model.store_transition(state, action, reward, next_state)  # 模型存储经历
                 # 控制学习起始时间(先积累记忆再学习)和控制学习的频率(积累多少步经验学习一次)
                 if step > 200 and step % 5 == 0:
