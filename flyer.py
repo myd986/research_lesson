@@ -36,18 +36,11 @@ class Fly:
         a = action % 6
         terminal = False
         self.move(a, flyer)
-        
-        # os.system('cls' if os.name == 'nt' else 'clear')
-        # for flyer_key in self.flyer_location.keys():
-        #     print(f"{flyer_key} - Real Position: {self.flyer_location[flyer_key]}, Estimated Position: {self.guess_position[flyer_key]}, error: {calculate_distance(self.flyer_location[flyer_key], self.guess_position[flyer_key]):6.1f}")
-
         loss = self.calculate_loss()
         print([float(round(i,2)) for i in loss.values()])
         if sum(loss.values()) / len(loss) <= self.terminal_threshold:
             terminal = True
-        # reward = self.cal_reward(loss)
         return self.guess_position, self.cal_reward(loss), terminal
-        # return self.guess_position, self.cal_reward_(), terminal
 
     def calculate_loss(self):
         loss = {}
@@ -74,7 +67,4 @@ class Fly:
 
 
 if __name__ == "__main__":
-    # import time
-    # from A2A_location import A2A_location
-    # from A2A_location import calculate_distance
     print('This file do nothing...')
